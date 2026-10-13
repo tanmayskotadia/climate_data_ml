@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Climate Data Quality Enhancement | Transformer & Diffusion Benchmarks</title>
+  <meta name="description" content="AI-Based Climate Data Quality Enhancement using Spatio-Temporal Transformers, Conditional Diffusion (CoFILL), and Monte Carlo Dropout Uncertainty Quantification on ERA5, NASA POWER, NOAA GSOD, and IMD datasets.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- TOP NAVIGATION & HEADER -->
+    <header class="app-header">
+      <div class="header-branding">
+        <div class="logo-badge">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          <span>CLIMATE-AI LAB</span>
+        </div>
+        <div class="header-titles">
+          <h1 id="app-title">AI-Based Climate Data Quality Enhancement</h1>
+          <p id="app-subtitle" class="subtitle">Transformer-Based Missing Climate Data Reconstruction Using Multi-Source Weather Observations</p>
+        </div>
+      </div>
+      <div class="author-chips">
+        <div class="author-chip">
+          <div class="avatar-dot"></div>
+          <div>
+            <div class="name">Tanmay Suresh Kotadia</div>
+            <div class="reg-no">24BCE5281</div>
+          </div>
+        </div>
+        <div class="author-chip">
+          <div class="avatar-dot"></div>
+          <div>
+            <div class="name">Aditya Sandhwar</div>
+            <div class="reg-no">24BCE5253</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN GRID LAYOUT -->
+    <main class="dashboard-grid">
+      <!-- SIDEBAR CONTROLS -->
+      <aside class="control-panel glass-card">
+        <div class="panel-header">
+          <h3>Experiment Controls</h3>
+          <span class="badge live-badge">Interactive</span>
+        </div>
+
+        <form id="control-form" onsubmit="event.preventDefault(); runExperiment();">
+          <!-- Dataset Selector -->
+          <div class="form-group">
+            <label for="dataset-select">Real Climate Dataset</label>
+            <select id="dataset-select" class="form-control" onchange="updateVariableOptions()">
+              <option value="ERA5" selected>ECMWF ERA5 (Hourly Reanalysis - 8760 pts)</option>
+              <option value="NASA_POWER">NASA POWER (Agroclimatology - 365 pts)</option>
+              <option value="NOAA_GSOD">NOAA GSOD (Ground Station 42182 - 363 pts)</option>
+              <option value="IMD">IMD Network (Mumbai Station 43057)</option>
+            </select>
+            <span class="field-hint">Real multi-source satellite, station & reanalysis archives</span>
+          </div>
+
+          <!-- Variable Selector -->
+          <div class="form-group">
+            <label for="variable-select">Meteorological Variable</label>
+            <select id="variable-select" class="form-control">
+              <option value="temperature" selected>Temperature (°C)</option>
+              <option value="relative_humidity">Relative Humidity (%)</option>
+              <option value="wind_speed">Wind Speed (m/s)</option>
+              <option value="precipitation">Precipitation (mm)</option>
+            </select>
+          </div>
+
+          <!-- Gap / Corruption Scenario -->
+          <div class="form-group">
+            <label for="scenario-select">Corruption / Missingness Scenario</label>
+            <select id="scenario-select" class="form-control">
+              <option value="block_24h" selected>24h Continuous Outage (Sensor Breakdown)</option>
+              <option value="random_10">10% Random Missing (MCAR Telemetry Loss)</option>
+              <option value="random_20">20% Random Missing (MCAR Telemetry Loss)</option>
+              <option value="random_40">40% Severe Missing (Severe Communication Drop)</option>
+              <option value="sensor_freeze">Sensor Freeze (ADC Flatline Lockup)</option>
+              <option value="sensor_spikes">Sensor Spikes (Electrical Glitches)</option>
+              <option value="compound">Compound Degradation (Block + Drift + Spikes)</option>
+            </select>
+          </div>
+
+          <!-- Model Execution Mode -->
+          <div class="form-group">
+            <label for="model-select">Reconstruction Architecture</label>
+            <select id="model-select" class="form-control">
+              <option value="all" selected>Benchmark All 6 Models (Full Comparison)</option>
+              <option value="transformer">★ Proposed: SpatioTemporal Transformer (Ours)</option>
+              <option value="diffusion">Baseline: Conditional Diffusion (CoFILL - IJCAI '25)</option>
+              <option value="lstm">Baseline: Bidirectional LSTM</option>
+              <option value="gru">Baseline: Bidirectional GRU</option>
+              <option value="pchip">Baseline: PCHIP Interpolation</option>
+              <option value="linear">Baseline: Linear Interpolation</option>
+            </select>
+          </div>
+
+          <!-- Toggles -->
+          <div class="toggle-group">
+            <label class="toggle-label">
+              <input type="checkbox" id="uncertainty-toggle" checked>
+              <span class="toggle-slider"></span>
+              <span>Quantify Uncertainty (95% CI Band)</span>
+            </label>
+          </div>
+
+          <button id="run-btn" type="submit" class="btn-primary">
+            <span class="btn-icon">⚡</span>
+            <span id="btn-text">Execute AI Reconstruction</span>
+          </button>
+        </form>
+
+        <!-- Objective 1 Diagnostics Summary -->
+        <div class="quality-diagnostics">
+          <div class="diag-header">
+            <h4>Objective 1: Anomaly Diagnostics</h4>
+          </div>
+          <div class="diag-grid">
+            <div class="diag-item">
+              <div class="diag-val" id="diag-missing">0</div>
+              <div class="diag-lbl">Missing Points</div>
+            </div>
+            <div class="diag-item">
+              <div class="diag-val" id="diag-phys">0</div>
+              <div class="diag-lbl">Physical Violations</div>
+            </div>
+            <div class="diag-item">
+              <div class="diag-val" id="diag-freeze">0</div>
+              <div class="diag-lbl">Telemetry Freezes</div>
+            </div>
+            <div class="diag-item">
+              <div class="diag-val" id="diag-spikes">0</div>
+              <div class="diag-lbl">Spike Glitches</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- VISUALIZATION & BENCHMARK AREA -->
+      <section class="main-content">
+        <!-- CHART CARD -->
+        <div class="chart-card glass-card">
+          <div class="card-top-bar">
+            <div>
+              <h2 id="chart-heading">Time-Series Reconstruction & Uncertainty Verification</h2>
+              <span id="chart-subheading" class="meta-tag">ERA5 Temperature | 24h Outage Block Gap</span>
+            </div>
+            <div class="chart-legend" id="chart-legend">
+              <span class="legend-item"><span class="dot gt-dot"></span>Ground Truth</span>
+              <span class="legend-item"><span class="dot missing-dot"></span>Missing Gaps</span>
+              <span class="legend-item"><span class="dot trans-dot"></span>Transformer (Ours - Lowest MAE)</span>
+              <span class="legend-item"><span class="dot diff-dot"></span>Diffusion (CoFILL)</span>
+              <span class="legend-item"><span class="dot lstm-dot"></span>Bi-LSTM</span>
+              <span class="legend-item"><span class="dot gru-dot"></span>Bi-GRU</span>
+              <span class="legend-item"><span class="dot pchip-dot"></span>PCHIP</span>
+              <span class="legend-item"><span class="dot linear-dot"></span>Linear</span>
+            </div>
+          </div>
+
+          <!-- Canvas Chart -->
+          <div class="canvas-wrapper">
+            <canvas id="reconstructionChart" width="1000" height="380"></canvas>
+            <div id="chart-tooltip" class="chart-tooltip hidden"></div>
+          </div>
+        </div>
+
+        <!-- BENCHMARK METRICS TABLE CARD -->
+        <div class="metrics-card glass-card">
+          <div class="metrics-header">
+            <div>
+              <h3>Objective 2 & 3: Model Benchmark & Uncertainty Calibration</h3>
+              <p class="subtitle">Evaluated on hidden/missing timestamps using MAE, RMSE, R², Coverage (PICP), and Inference Latency.</p>
+            </div>
+            <button class="btn-outline" onclick="exportResultsCSV()">
+              📥 Export Metrics CSV
+            </button>
+          </div>
+
+          <div class="table-container">
+            <table class="benchmark-table" id="benchmark-table">
+              <thead>
+                <tr>
+                  <th>Architecture</th>
+                  <th>Type</th>
+                  <th>MAE (Lower=Best)</th>
+                  <th>RMSE</th>
+                  <th>R² Score</th>
+                  <th>95% Coverage (PICP)</th>
+                  <th>Interval Width (MPIW)</th>
+                  <th>Latency</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="metrics-tbody">
+                <tr>
+                  <td colspan="9" class="loading-cell">Loading real climate models and initializing baseline execution...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- METHODOLOGY & LITERATURE REVIEW CARD -->
+        <div class="literature-card glass-card">
+          <div class="lit-header">
+            <h3>Theoretical Architecture & Literature Alignment (DA1)</h3>
+          </div>
+          <div class="lit-grid">
+            <div class="lit-box">
+              <span class="lit-paper-tag">Paper 1 (IJCAI 2025)</span>
+              <h4>Conditional Diffusion (CoFILL)</h4>
+              <p>Uses dual-stream temporal and frequency denoising process conditioned on observed points to mitigate cumulative error. Benchmarked as a comparative baseline in our framework.</p>
+            </div>
+            <div class="lit-box">
+              <span class="lit-paper-tag">Proposed Solution</span>
+              <h4>Spatio-Temporal Transformer (Ours)</h4>
+              <p>Combines multi-head self-attention with diurnal harmonic positional encodings and learnable [MASK] tokens (inspired by CT-MVP, ESFM, and TabImpute), achieving the strictly lowest MAE across all missingness regimes.</p>
+            </div>
+            <div class="lit-box">
+              <span class="lit-paper-tag">Objective 3</span>
+              <h4>Calibrated Epistemic Uncertainty (MC Dropout)</h4>
+              <p>By sampling posterior predictive weights via test-time Monte Carlo Dropout, the framework derives calibrated 95% confidence bands, attaching trustworthiness scores to imputed values before downstream forecasting.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+Scenario,Model,MAE,RMSE,R2,MAPE,CRPS,Latency_ms,PICP,MPIW
+random_10,Linear Interpolation,0.396,0.502,0.9887,4.18,0.396,0.53,-,-
+random_10,PCHIP Spline,0.295,0.4,0.9928,3.18,0.295,0.83,-,-
+random_10,Bi-LSTM,3.064,3.598,0.4211,32.44,2.847,2051.04,19.44,1.666
+random_10,Bi-GRU,3.579,4.181,0.2181,39.77,3.398,5437.85,13.89,1.401
+random_10,Conditional Diffusion (CoFILL),3.804,4.494,0.0971,38.97,3.217,327.56,27.78,5.08
+random_10,Transformer (Proposed - Ours),0.212,0.249,0.9972,2.37,0.141,1090.05,100.0,0.782
+random_25,Linear Interpolation,0.443,0.612,0.9773,4.6,0.443,0.92,-,-
+random_25,PCHIP Spline,0.353,0.546,0.9819,3.77,0.353,0.76,-,-
+random_25,Bi-LSTM,2.727,3.311,0.3346,30.48,2.498,434.07,25.0,1.748
+random_25,Bi-GRU,2.822,3.468,0.2703,29.8,2.619,5701.82,16.67,1.489
+random_25,Conditional Diffusion (CoFILL),2.441,2.967,0.4656,27.26,1.958,312.08,55.56,5.091
+random_25,Transformer (Proposed - Ours),0.254,0.296,0.9947,3.13,0.164,1104.75,100.0,0.873
+block_24h,Linear Interpolation,4.443,5.568,-1.6968,33.22,4.443,0.58,-,-
+block_24h,PCHIP Spline,4.392,5.487,-1.6196,32.92,4.392,0.51,-,-
+block_24h,Bi-LSTM,2.747,3.303,0.0508,25.0,2.529,334.94,12.5,1.551
+block_24h,Bi-GRU,2.732,3.255,0.0785,25.0,2.529,5480.97,8.33,1.42
+block_24h,Conditional Diffusion (CoFILL),2.674,3.406,-0.0091,22.95,1.99,283.53,79.17,8.072
+block_24h,Transformer (Proposed - Ours),2.121,2.577,0.4222,17.31,1.358,1090.66,100.0,6.235
