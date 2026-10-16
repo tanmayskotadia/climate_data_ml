@@ -16,6 +16,9 @@ import numpy as np
 import pandas as pd
 from typing import Tuple, Dict, Optional
 
+# Disable cuDNN engine benchmark for 1D convolutions to prevent Windows driver engine errors
+torch.backends.cudnn.enabled = False
+
 class DiffusionDenoisingNet(nn.Module):
     """
     U-Net style 1D Temporal Denoising Network for conditional imputation.

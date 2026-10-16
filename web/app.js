@@ -1,7 +1,6 @@
 /**
  * AI-Based Climate Data Quality Enhancement
  * Interactive Dashboard Logic & Canvas Time-Series Visualizer
- * Authors: Tanmay Suresh Kotadia (24BCE5281) & Aditya Sandhwar (24BCE5253)
  */
 
 let currentExperimentData = null;
@@ -10,26 +9,70 @@ window.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("resize", () => {
     if (currentExperimentData) renderChart(currentExperimentData);
   });
-  runExperiment();
+  loadDatasets().then(() => runExperiment());
 });
+
+/** Fetch available datasets from the backend and populate the dropdown. */
+async function loadDatasets() {
+  try {
+    const res = await fetch("/api/datasets");
+    const data = await res.json();
+    const sel = document.getElementById("dataset-select");
+    sel.innerHTML = "";
+    let first = true;
+    for (const [key, info] of Object.entries(data)) {
+      if (info.error) continue;
+      const opt = document.createElement("option");
+      opt.value = key;
+      opt.textContent = info.label || key;
+      if (first) { opt.selected = true; first = false; }
+      sel.appendChild(opt);
+    }
+  } catch (e) {
+    console.warn("Could not load datasets:", e);
+  }
+}
+
+function onDatasetChange() {
+  updateVariableOptions();
+}
 
 function updateVariableOptions() {
   // Real datasets support all standard variables
 }
 
+function toggleAllModels(selectAll) {
+  const checkboxes = document.querySelectorAll('input[name="model-opt"]');
+  checkboxes.forEach(cb => { cb.checked = selectAll; });
+}
+
 async function runExperiment() {
   const runBtn = document.getElementById("run-btn");
   const btnText = document.getElementById("btn-text");
+
+  const checkedBoxes = document.querySelectorAll('input[name="model-opt"]:checked');
+  const selectedModels = Array.from(checkedBoxes).map(cb => cb.value);
+
+  if (selectedModels.length === 0) {
+    alert("Please select at least one reconstruction model to execute.");
+    return;
+  }
+
   runBtn.disabled = true;
   btnText.innerText = "Training & Reconstructing...";
 
   const dataset = document.getElementById("dataset-select").value;
   const variable = document.getElementById("variable-select").value;
   const scenario = document.getElementById("scenario-select").value;
-  const model = document.getElementById("model-select").value;
+
+  const startDayRaw = document.getElementById("start-day")?.value;
+  const endDayRaw   = document.getElementById("end-day")?.value;
+  const startDay = startDayRaw && startDayRaw !== "" ? parseInt(startDayRaw, 10) : null;
+  const endDay   = endDayRaw   && endDayRaw   !== "" ? parseInt(endDayRaw,   10) : null;
 
   document.getElementById("chart-subheading").innerText = 
-    `${dataset} | ${formatVarName(variable)} | Scenario: ${formatScenarioName(scenario)}`;
+    `${dataset} | ${formatVarName(variable)} | Scenario: ${formatScenarioName(scenario)}` +
+    (startDay || endDay ? ` | Days ${startDay ?? 1}–${endDay ?? 365}` : " | Full Horizon");
 
   try {
     const response = await fetch("/api/run", {
@@ -39,8 +82,9 @@ async function runExperiment() {
         dataset: dataset,
         variable: variable,
         scenario: scenario,
-        model: model,
-        limit: 144
+        models: selectedModels,
+        start_day: startDay,
+        end_day: endDay,
       })
     });
 
@@ -65,7 +109,7 @@ async function runExperiment() {
     alert("Reconstruction failed: " + err.message);
   } finally {
     runBtn.disabled = false;
-    btnText.innerText = "Execute AI Reconstruction";
+    btnText.innerText = "Execute Reconstruction";
   }
 }
 
@@ -99,7 +143,7 @@ function renderMetricsTable(models) {
   }
 
   const modelMeta = {
-    "transformer": { name: "SpatioTemporal Transformer (Ours)", type: "Self-Attention (Proposed)" },
+    "transformer": { name: "Spatio-Temporal Transformer (Proposed)", type: "Self-Attention (Proposed)" },
     "diffusion": { name: "Conditional Diffusion (CoFILL)", type: "Score-Based Diffusion (IJCAI '25)" },
     "lstm": { name: "Bidirectional LSTM", type: "Recurrent Deep Learning" },
     "gru": { name: "Bidirectional GRU", type: "Recurrent Deep Learning" },
@@ -129,7 +173,7 @@ function renderMetricsTable(models) {
     const picpText = m.PICP !== undefined ? `${m.PICP}%` : `<span style="color:#64748b">—</span>`;
     const mpiwText = m.MPIW !== undefined ? `${m.MPIW}` : `<span style="color:#64748b">—</span>`;
     const statusBadge = isBest 
-      ? `<span class="badge-best">★ State-of-the-Art (Lowest MAE)</span>`
+      ? `<span class="badge-best">Optimal (Lowest MAE)</span>`
       : `<span class="badge-baseline">Baseline</span>`;
 
     tr.innerHTML = `
@@ -295,15 +339,17 @@ function renderChart(data) {
 
   ctx.setLineDash([]);
 
-  // 5. Highlight Missing Gap Observations (Glowing Red Markers)
+  // 5. Highlight Missing Gap Observations (Red) & Detected Anomalies (Amber)
   const mask = data.missing_mask;
-  ctx.fillStyle = "#ef4444";
+  const anomMask = data.anomaly_mask || [];
+  
   for (let i = 0; i < n; i++) {
     if (mask[i]) {
       const x = toX(i);
       const y = toY(gt[i]);
       ctx.beginPath();
-      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = anomMask[i] ? "#f59e0b" : "#ef4444";
       ctx.fill();
     }
   }
@@ -349,17 +395,23 @@ canvas.addEventListener("mousemove", (e) => {
   if (isMissing) {
     content += `<span style="color:#ef4444; font-weight:600;">[Status: Missing Observation]</span><br/>`;
   }
-  if (currentExperimentData.models.transformer) {
-    const transVal = currentExperimentData.models.transformer.reconstructed[idx];
-    content += `<span style="color:#c084fc; font-weight:600;">Transformer (Ours): ${transVal}</span><br/>`;
-  }
-  if (currentExperimentData.models.diffusion) {
-    const diffVal = currentExperimentData.models.diffusion.reconstructed[idx];
-    content += `<span style="color:#ec4899;">Diffusion (CoFILL): ${diffVal}</span><br/>`;
-  }
-  if (currentExperimentData.models.lstm) {
-    const lstmVal = currentExperimentData.models.lstm.reconstructed[idx];
-    content += `<span style="color:#3b82f6;">Bi-LSTM: ${lstmVal}</span><br/>`;
+  const tooltipColors = {
+    "transformer": { label: "Transformer (Proposed)", color: "#c084fc", bold: true },
+    "diffusion": { label: "Diffusion (CoFILL)", color: "#ec4899", bold: false },
+    "lstm": { label: "Bi-LSTM", color: "#3b82f6", bold: false },
+    "gru": { label: "Bi-GRU", color: "#10b981", bold: false },
+    "pchip": { label: "PCHIP Spline", color: "#f59e0b", bold: false },
+    "linear": { label: "Linear Interpolation", color: "#94a3b8", bold: false }
+  };
+
+  for (const mKey of Object.keys(currentExperimentData.models)) {
+    const mData = currentExperimentData.models[mKey];
+    if (mData && mData.reconstructed) {
+      const val = mData.reconstructed[idx];
+      const info = tooltipColors[mKey] || { label: mData.name || mKey, color: "#cbd5e1", bold: false };
+      const formatted = typeof val === 'number' ? val.toFixed(2) : val;
+      content += `<span style="color:${info.color}; ${info.bold ? 'font-weight:600;' : ''}">${info.label}: ${formatted}</span><br/>`;
+    }
   }
 
   tooltip.innerHTML = content;

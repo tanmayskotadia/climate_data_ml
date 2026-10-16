@@ -83,13 +83,11 @@ def prepare_rnn_tensor(series: pd.Series, mean_val: float, std_val: float) -> Tu
     n = len(raw_vals)
     mask = ~np.isnan(raw_vals)  # 1 = observed, 0 = missing
     
-    # Fill missing with 0 for model input
-    clean_vals = np.where(mask, raw_vals, mean_val)
-    norm_vals = (clean_vals - mean_val) / (std_val + 1e-6)
-    norm_vals = np.where(mask, norm_vals, 0.0)
+    # Continuous baseline interpolation for recurrent cell stability
+    init_vals = pd.Series(raw_vals).interpolate(method="linear").bfill().ffill().values
+    norm_vals = (init_vals - mean_val) / (std_val + 1e-6)
     
     time_coords = np.linspace(0, 1, n)
-    
     feat = np.stack([norm_vals, mask.astype(float), time_coords], axis=-1)
     tensor_x = torch.tensor(feat, dtype=torch.float32).unsqueeze(0)  # [1, n, 3]
     return tensor_x, mask, raw_vals

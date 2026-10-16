@@ -1,0 +1,17 @@
+{
+  "name": "climate-data-ml",
+  "version": "1.0.0",
+  "description": "AI-Based Climate Data Quality Enhancement Dashboard & API",
+  "scripts": {
+    "dev": "python -m uvicorn app:app --reload --host 127.0.0.1 --port 8000",
+    "start": "python -m uvicorn app:app --host 127.0.0.1 --port 8000"
+  },
+  "keywords": [
+    "climate",
+    "transformer",
+    "fastapi",
+    "machine-learning"
+  ],
+  "author": "Tanmay Suresh Kotadia & Aditya Sandhwar",
+  "license": "ISC"
+}

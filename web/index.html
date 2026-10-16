@@ -15,31 +15,9 @@
     <!-- TOP NAVIGATION & HEADER -->
     <header class="app-header">
       <div class="header-branding">
-        <div class="logo-badge">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-          </svg>
-          <span>CLIMATE-AI LAB</span>
-        </div>
         <div class="header-titles">
           <h1 id="app-title">AI-Based Climate Data Quality Enhancement</h1>
           <p id="app-subtitle" class="subtitle">Transformer-Based Missing Climate Data Reconstruction Using Multi-Source Weather Observations</p>
-        </div>
-      </div>
-      <div class="author-chips">
-        <div class="author-chip">
-          <div class="avatar-dot"></div>
-          <div>
-            <div class="name">Tanmay Suresh Kotadia</div>
-            <div class="reg-no">24BCE5281</div>
-          </div>
-        </div>
-        <div class="author-chip">
-          <div class="avatar-dot"></div>
-          <div>
-            <div class="name">Aditya Sandhwar</div>
-            <div class="reg-no">24BCE5253</div>
-          </div>
         </div>
       </div>
     </header>
@@ -54,16 +32,22 @@
         </div>
 
         <form id="control-form" onsubmit="event.preventDefault(); runExperiment();">
-          <!-- Dataset Selector -->
+          <!-- Dataset Selector (populated dynamically via /api/datasets) -->
           <div class="form-group">
-            <label for="dataset-select">Real Climate Dataset</label>
-            <select id="dataset-select" class="form-control" onchange="updateVariableOptions()">
-              <option value="ERA5" selected>ECMWF ERA5 (Hourly Reanalysis - 8760 pts)</option>
-              <option value="NASA_POWER">NASA POWER (Agroclimatology - 365 pts)</option>
-              <option value="NOAA_GSOD">NOAA GSOD (Ground Station 42182 - 363 pts)</option>
-              <option value="IMD">IMD Network (Mumbai Station 43057)</option>
+            <label for="dataset-select">Climate Dataset</label>
+            <select id="dataset-select" class="form-control" onchange="onDatasetChange()">
+              <option value="">Loading datasets...</option>
             </select>
-            <span class="field-hint">Real multi-source satellite, station & reanalysis archives</span>
+          </div>
+
+          <!-- Time Range Selector -->
+          <div class="form-group">
+            <label>Temporal Range (Day of Year: 1–366)</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="number" id="start-day" class="form-control" min="1" max="366" placeholder="Start Day" style="width:50%;">
+              <span style="color:#94a3b8; flex-shrink:0; font-weight:600;">to</span>
+              <input type="number" id="end-day" class="form-control" min="1" max="366" placeholder="End Day" style="width:50%;">
+            </div>
           </div>
 
           <!-- Variable Selector -->
@@ -91,18 +75,41 @@
             </select>
           </div>
 
-          <!-- Model Execution Mode -->
+          <!-- Models to Run (Multi-select Checkboxes) -->
           <div class="form-group">
-            <label for="model-select">Reconstruction Architecture</label>
-            <select id="model-select" class="form-control">
-              <option value="all" selected>Benchmark All 6 Models (Full Comparison)</option>
-              <option value="transformer">★ Proposed: SpatioTemporal Transformer (Ours)</option>
-              <option value="diffusion">Baseline: Conditional Diffusion (CoFILL - IJCAI '25)</option>
-              <option value="lstm">Baseline: Bidirectional LSTM</option>
-              <option value="gru">Baseline: Bidirectional GRU</option>
-              <option value="pchip">Baseline: PCHIP Interpolation</option>
-              <option value="linear">Baseline: Linear Interpolation</option>
-            </select>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <label style="margin-bottom:0;">Reconstruction Models</label>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="link-btn" onclick="toggleAllModels(true)">Select All</button>
+                <button type="button" class="link-btn" onclick="toggleAllModels(false)">Clear</button>
+              </div>
+            </div>
+            <div class="model-checkbox-grid">
+              <label class="model-checkbox-item">
+                <input type="checkbox" name="model-opt" value="transformer" checked>
+                <span style="color:#c084fc; font-weight:600;">Spatio-Temporal Transformer (Proposed)</span>
+              </label>
+              <label class="model-checkbox-item">
+                <input type="checkbox" name="model-opt" value="pchip" checked>
+                <span>PCHIP Spline Interpolation</span>
+              </label>
+              <label class="model-checkbox-item">
+                <input type="checkbox" name="model-opt" value="linear">
+                <span>Linear Interpolation</span>
+              </label>
+              <label class="model-checkbox-item">
+                <input type="checkbox" name="model-opt" value="diffusion">
+                <span>Conditional Diffusion (CoFILL)</span>
+              </label>
+              <label class="model-checkbox-item">
+                <input type="checkbox" name="model-opt" value="lstm">
+                <span>Bidirectional LSTM</span>
+              </label>
+              <label class="model-checkbox-item">
+                <input type="checkbox" name="model-opt" value="gru">
+                <span>Bidirectional GRU</span>
+              </label>
+            </div>
           </div>
 
           <!-- Toggles -->
@@ -115,8 +122,7 @@
           </div>
 
           <button id="run-btn" type="submit" class="btn-primary">
-            <span class="btn-icon">⚡</span>
-            <span id="btn-text">Execute AI Reconstruction</span>
+            <span id="btn-text">Execute Reconstruction</span>
           </button>
         </form>
 
@@ -158,7 +164,7 @@
             <div class="chart-legend" id="chart-legend">
               <span class="legend-item"><span class="dot gt-dot"></span>Ground Truth</span>
               <span class="legend-item"><span class="dot missing-dot"></span>Missing Gaps</span>
-              <span class="legend-item"><span class="dot trans-dot"></span>Transformer (Ours - Lowest MAE)</span>
+              <span class="legend-item"><span class="dot trans-dot"></span>Spatio-Temporal Transformer (Proposed)</span>
               <span class="legend-item"><span class="dot diff-dot"></span>Diffusion (CoFILL)</span>
               <span class="legend-item"><span class="dot lstm-dot"></span>Bi-LSTM</span>
               <span class="legend-item"><span class="dot gru-dot"></span>Bi-GRU</span>
@@ -182,7 +188,7 @@
               <p class="subtitle">Evaluated on hidden/missing timestamps using MAE, RMSE, R², Coverage (PICP), and Inference Latency.</p>
             </div>
             <button class="btn-outline" onclick="exportResultsCSV()">
-              📥 Export Metrics CSV
+              Export Metrics (CSV)
             </button>
           </div>
 

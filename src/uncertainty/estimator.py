@@ -27,7 +27,9 @@ def estimate_transformer_uncertainty(
     mean_val: float,
     std_val: float,
     n_samples: int = 40,
-    device: str = "cpu"
+    device: str = "cpu",
+    timestamps: Optional[pd.Series] = None,
+    aux_df: Optional[pd.DataFrame] = None
 ) -> Dict[str, np.ndarray]:
     """
     Computes Monte Carlo Dropout uncertainty for SpatioTemporalClimateTransformer.
@@ -39,7 +41,9 @@ def estimate_transformer_uncertainty(
     """
     from src.models.transformer import prepare_transformer_inputs
     
-    x_tensor, mask_tensor, raw_vals = prepare_transformer_inputs(series, mean_val, std_val)
+    x_tensor, mask_tensor, raw_vals, _ = prepare_transformer_inputs(
+        series, mean_val, std_val, timestamps=timestamps, aux_df=aux_df
+    )
     x_tensor = x_tensor.to(device)
     mask_tensor = mask_tensor.to(device)
     
